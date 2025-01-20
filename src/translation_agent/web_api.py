@@ -10,6 +10,7 @@ from .utils import translate
 
 
 app = FastAPI()
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 
 def parse_args():
@@ -41,7 +42,7 @@ def translate_api(data: Data):
         model=data.model,
         chunk_model=data.chunk_model,
         max_tokens=data.max_tokens,
-    )
+    ).strip("\"")
 
 
 if __name__ == "__main__":

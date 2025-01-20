@@ -6,8 +6,8 @@ import openai
 import tiktoken
 from dotenv import load_dotenv
 from icecream import ic
-from transformers import AutoTokenizer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from transformers import AutoTokenizer
 
 
 load_dotenv()  # read local .env file
@@ -19,6 +19,8 @@ client = openai.OpenAI(
 MAX_TOKENS_PER_CHUNK = (
     int(os.getenv("MAX_TOKENS_PER_CHUNK"))  # if text is more than this many tokens, we'll break it up into
 )
+TOTAL_MAX_TOKENS = int(os.getenv("TOTAL_MAX_TOKENS"))  # if text is more than this many tokens, we'll break it up into
+MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS")) # 单次模型最大生成token数
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL")
 DEFAULT_CHUNK_MODEL = os.getenv("DEFAULT_CHUNK_MODEL")
 # discrete chunks to translate one chunk at a time
@@ -61,6 +63,7 @@ def get_completion(
             model=model,
             temperature=temperature,
             top_p=1,
+            max_tokens=MAX_NEW_TOKENS,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_message},
@@ -73,10 +76,12 @@ def get_completion(
             model=model,
             temperature=temperature,
             top_p=1,
+            max_tokens=MAX_NEW_TOKENS,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt},
             ],
+            timeout=60,
         )
         return response.choices[0].message.content
 
@@ -97,14 +102,15 @@ def one_chunk_initial_translation(
     """
 
     system_message = f"You are an expert linguist, specializing in translation from {source_lang} to {target_lang}."
-
+    # 临时替换, 解决{}问题
+    source_text = source_text.replace('{', '{{').replace('}', '}}')
     translation_prompt = f"""This is an {source_lang} to {target_lang} translation, please provide the {target_lang} translation for this text. \
 Do not provide any explanations or text apart from the translation.
 {source_lang}: {source_text}
 
 {target_lang}:"""
-
     prompt = translation_prompt.format(source_text=source_text)
+    prompt = prompt.replace('{{', '{').replace('}}', '}')
 
     translation = get_completion(prompt, model=model, system_message=system_message)
 
@@ -119,6 +125,7 @@ def one_chunk_reflect_on_translation(
     model: str,
     country: str = "",
 ) -> str:
+    source_text = source_text.replace('{', '{{').replace('}', '}}')
     """
     Use an LLM to reflect on the translation, treating the entire text as one chunk.
 
@@ -190,6 +197,7 @@ Output only the suggestions and nothing else."""
         source_text=source_text,
         translation_1=translation_1,
     )
+    prompt = prompt.replace('{{', '{').replace('}}', '}')
     reflection = get_completion(prompt, model=model, system_message=system_message)
     return reflection
 
@@ -350,6 +358,7 @@ Output only the translation of the portion you are asked to translate, and nothi
 
     translation_chunks = []
     for i in range(len(source_text_chunks)):
+        ic("initial translation Translating chunk", i)
         # Will translate chunk i
         tagged_text = (
             "".join(source_text_chunks[0:i])
@@ -463,6 +472,7 @@ Output only the suggestions and nothing else."""
 
     reflection_chunks = []
     for i in range(len(source_text_chunks)):
+        ic("reflecting on translation chunk", i)
         # Will translate chunk i
         tagged_text = (
             "".join(source_text_chunks[0:i])
@@ -558,6 +568,7 @@ Output only the new translation of the indicated part and nothing else."""
 
     translation_2_chunks = []
     for i in range(len(source_text_chunks)):
+        ic("improving translation chunk", i)
         # Will translate chunk i
         tagged_text = (
             "".join(source_text_chunks[0:i])
@@ -672,6 +683,7 @@ def translate(
     model=DEFAULT_MODEL,
     chunk_model=DEFAULT_CHUNK_MODEL,
     max_tokens=MAX_TOKENS_PER_CHUNK,
+    total_max_tokens=TOTAL_MAX_TOKENS,
 ):
     """Translate the source_text from source_lang to target_lang."""
     if chunk_model == DEFAULT_CHUNK_MODEL:
@@ -694,8 +706,7 @@ def translate(
         )
 
         return final_translation
-
-    else:
+    elif num_tokens_in_text < total_max_tokens:
         ic("Translating text as multiple chunks")
 
         token_size = calculate_chunk_size(
@@ -723,3 +734,70 @@ def translate(
         )
 
         return "".join(translation_2_chunks)
+    else:
+        # text is too long, we need to split it into smaller chunks
+        ic("Translating long text as multiple chunks")
+        split_text_size = calculate_chunk_size(
+            token_count=num_tokens_in_text, token_limit=total_max_tokens
+        )
+        ic(split_text_size)
+        if chunk_model in tiktoken.model.MODEL_TO_ENCODING:
+            text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+                model_name=chunk_model,
+                chunk_size=split_text_size,
+                chunk_overlap=0,
+            )
+        else:
+            text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
+                tokenizer=tokenizer,
+                chunk_size=split_text_size,
+                chunk_overlap=0,
+            )
+        source_text_chunks = text_splitter.split_text(source_text)
+        translate_list = []
+        for i, chunk in enumerate(source_text_chunks):
+            ic(f"Chunk {i + 1}: {chunk}")
+            # 再次判断每个chunk的长度
+            num_tokens_in_chunk = num_tokens_in_string(chunk, tokenizer=tokenizer)
+            ic(num_tokens_in_chunk)
+            if num_tokens_in_chunk < max_tokens:
+                ic("Translating chunk as single chunk")
+                temp_translation = one_chunk_translate_text(
+                    source_lang, target_lang, chunk, model, country
+                )
+            else:
+                ic("Translating chunk as multiple chunks")
+                chunk_size = calculate_chunk_size(
+                    token_count=num_tokens_in_chunk, token_limit=max_tokens
+                )
+
+                ic(chunk_size)
+                if chunk_model in tiktoken.model.MODEL_TO_ENCODING:
+                    chunk_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+                        model_name=chunk_model,
+                        chunk_size=chunk_size,
+                        chunk_overlap=0,
+                    )
+                else:
+                    chunk_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
+                        tokenizer=tokenizer,
+                        chunk_size=chunk_size,
+                        chunk_overlap=0,
+                    )
+
+                split_chunks = chunk_splitter.split_text(chunk)
+
+                translation_2_chunks = multichunk_translation(
+                    source_lang, target_lang, split_chunks, model, country
+                )
+
+                temp_translation = "".join(translation_2_chunks)
+            translate_list.append(temp_translation)
+        return "".join(translate_list)
+
+
+if __name__ == "__main__":
+    # with open("text.txt") as f:
+    #     text = f.read()
+    text = "{你好}，我是一个{翻译}机器人。"
+    translated_text = translate("Chinese", "English", text, "China")

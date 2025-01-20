@@ -52,8 +52,9 @@ docker build . -t translation-agent
 
 - run with docker
 ```bash
-docker run -d -p 8000:8000 \
+docker run -d -p 3002:8000 \
     --restart always \
+    -e HF_ENDPOINT="https://hf-mirror.com" \
     -v ${PWD}/.env:/app/.env \
     --name translation-agent \
     translation-agent
