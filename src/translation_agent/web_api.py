@@ -26,7 +26,9 @@ class Data(BaseModel):
     source_lang: str
     target_lang: str
     source_text: str
-    country: str
+    text_type: str
+    identity_description: str = "You are an overseas study expert"
+    country: str = "China"
     model: str = os.getenv("DEFAULT_MODEL")
     chunk_model: str = os.getenv("DEFAULT_CHUNK_MODEL")
     max_tokens: int = MAX_TOKENS_PER_CHUNK
@@ -38,6 +40,8 @@ def translate_api(data: Data):
         source_lang=data.source_lang,
         target_lang=data.target_lang,
         source_text=data.source_text,
+        text_type=data.text_type,
+        identity_description=data.identity_description,
         country=data.country,
         model=data.model,
         chunk_model=data.chunk_model,
@@ -47,10 +51,12 @@ def translate_api(data: Data):
 
 if __name__ == "__main__":
     args = parse_args()
+    log_config_path = os.path.join(os.path.dirname(__file__), "log_conf.yaml")
     uvicorn.run(
         app="__main__:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
         workers=args.workers,
+        log_config=log_config_path,
     )

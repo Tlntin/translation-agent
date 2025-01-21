@@ -87,7 +87,12 @@ def get_completion(
 
 
 def one_chunk_initial_translation(
-    source_lang: str, target_lang: str, source_text: str, model: str
+    source_lang: str,
+    target_lang: str,
+    source_text: str,
+    model: str,
+    text_type: str,
+    identity_description: str = "You are an overseas study expert",
 ) -> str:
     """
     Translate the entire text as one chunk using an LLM.
@@ -97,14 +102,15 @@ def one_chunk_initial_translation(
         target_lang (str): The target language for translation.
         source_text (str): The text to be translated.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
     Returns:
         str: The translated text.
     """
 
-    system_message = f"You are an expert linguist, specializing in translation from {source_lang} to {target_lang}."
+    system_message = f"{identity_description}, specializing in translation from {source_lang} to {target_lang}."
     # 临时替换, 解决{}问题
     source_text = source_text.replace('{', '{{').replace('}', '}}')
-    translation_prompt = f"""This is an {source_lang} to {target_lang} translation, please provide the {target_lang} translation for this text. \
+    translation_prompt = f"""This is an {source_lang} to {target_lang} translation for {text_type}, please provide the {target_lang} translation for this text. \
 Do not provide any explanations or text apart from the translation.
 {source_lang}: {source_text}
 
@@ -123,6 +129,8 @@ def one_chunk_reflect_on_translation(
     source_text: str,
     translation_1: str,
     model: str,
+    text_type: str,
+    identity_description: str = "You are an overseas study expert",
     country: str = "",
 ) -> str:
     source_text = source_text.replace('{', '{{').replace('}', '}}')
@@ -135,17 +143,18 @@ def one_chunk_reflect_on_translation(
         source_text (str): The original text in the source language.
         translation_1 (str): The initial translation of the source text.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
         country (str): Country specified for target language.
 
     Returns:
         str: The LLM's reflection on the translation, providing constructive criticism and suggestions for improvement.
     """
 
-    system_message = f"You are an expert linguist specializing in translation from {source_lang} to {target_lang}. \
+    system_message = f"{identity_description} in translation from {source_lang} to {target_lang}. \
 You will be provided with a source text and its translation and your goal is to improve the translation."
 
     if country != "":
-        reflection_prompt = f"""Your task is to carefully read a source text and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
+        reflection_prompt = f"""Your task is to carefully read a source text for {text_type} and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
 The final style and tone of the translation should match the style of {target_lang} colloquially spoken in {country}.
 
 The source text and initial translation, delimited by XML tags <SOURCE_TEXT></SOURCE_TEXT> and <TRANSLATION></TRANSLATION>, are as follows:
@@ -169,7 +178,7 @@ Each suggestion should address one specific part of the translation.
 Output only the suggestions and nothing else."""
 
     else:
-        reflection_prompt = f"""Your task is to carefully read a source text and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
+        reflection_prompt = f"""Your task is to carefully read a source text for {text_type} and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
 
 The source text and initial translation, delimited by XML tags <SOURCE_TEXT></SOURCE_TEXT> and <TRANSLATION></TRANSLATION>, are as follows:
 
@@ -209,6 +218,8 @@ def one_chunk_improve_translation(
     translation_1: str,
     reflection: str,
     model: str,
+    text_type: str,
+    identity_description: str = "You are an overseas study expert",
 ) -> str:
     """
     Use the reflection to improve the translation, treating the entire text as one chunk.
@@ -220,14 +231,15 @@ def one_chunk_improve_translation(
         translation_1 (str): The initial translation of the source text.
         reflection (str): Expert suggestions and constructive criticism for improving the translation.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
 
     Returns:
         str: The improved translation based on the expert suggestions.
     """
 
-    system_message = f"You are an expert linguist, specializing in translation editing from {source_lang} to {target_lang}."
+    system_message = f"{identity_description}, specializing in translation editing from {source_lang} to {target_lang}."
 
-    prompt = f"""Your task is to carefully read, then edit, a translation from {source_lang} to {target_lang}, taking into
+    prompt = f"""Your task is to carefully read, then edit, a translation from {source_lang} to {target_lang} for {text_type}, taking into
 account a list of expert suggestions and constructive criticisms.
 
 The source text, the initial translation, and the expert linguist suggestions are delimited by XML tags <SOURCE_TEXT></SOURCE_TEXT>, <TRANSLATION></TRANSLATION> and <EXPERT_SUGGESTIONS></EXPERT_SUGGESTIONS> \
@@ -261,7 +273,13 @@ Output only the new translation and nothing else."""
 
 
 def one_chunk_translate_text(
-    source_lang: str, target_lang: str, source_text: str, model: str, country: str = ""
+    source_lang: str,
+    target_lang: str,
+    source_text: str,
+    model: str,
+    text_type: str,
+    identity_description: str = "You are an overseas study expert",
+    country: str = ""
 ) -> str:
     """
     Translate a single chunk of text from the source language to the target language.
@@ -275,19 +293,39 @@ def one_chunk_translate_text(
         target_lang (str): The target language for the translation.
         source_text (str): The text to be translated.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
         country (str): Country specified for target language.
     Returns:
         str: The improved translation of the source text.
     """
     translation_1 = one_chunk_initial_translation(
-        source_lang, target_lang, source_text, model
+        source_lang,
+        target_lang,
+        source_text,
+        model,
+        text_type=text_type,
+        identity_description=identity_description,
     )
 
     reflection = one_chunk_reflect_on_translation(
-        source_lang, target_lang, source_text, translation_1, model, country
+        source_lang,
+        target_lang,
+        source_text,
+        translation_1,
+        model,
+        text_type=text_type,
+        identity_description=identity_description,
+        country=country
     )
     translation_2 = one_chunk_improve_translation(
-        source_lang, target_lang, source_text, translation_1, reflection, model
+        source_lang,
+        target_lang,
+        source_text,
+        translation_1,
+        reflection,
+        model,
+        text_type=text_type,
+        identity_description=identity_description,
     )
 
     return translation_2
@@ -321,7 +359,12 @@ def num_tokens_in_string(
 
 
 def multichunk_initial_translation(
-    source_lang: str, target_lang: str, source_text_chunks: List[str], model: str
+    source_lang: str,
+    target_lang: str,
+    source_text_chunks: List[str],
+    model: str,
+    text_type: str,
+    identity_description: str = "You are an overseas study expert",
 ) -> List[str]:
     """
     Translate a text in multiple chunks from the source language to the target language.
@@ -331,14 +374,15 @@ def multichunk_initial_translation(
         target_lang (str): The target language for translation.
         source_text_chunks (List[str]): A list of text chunks to be translated.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
 
     Returns:
         List[str]: A list of translated text chunks.
     """
 
-    system_message = f"You are an expert linguist, specializing in translation from {source_lang} to {target_lang}."
+    system_message = f"{identity_description}, specializing in translation from {source_lang} to {target_lang}."
 
-    translation_prompt = """Your task is provide a professional translation from {source_lang} to {target_lang} of PART of a text.
+    translation_prompt = """Your task is provide a professional translation from {source_lang} to {target_lang} of PART of a text for {type_text}.
 
 The source text is below, delimited by XML tags <SOURCE_TEXT> and </SOURCE_TEXT>. Translate only the part within the source text
 delimited by <TRANSLATE_THIS> and </TRANSLATE_THIS>. You can use the rest of the source text as context, but do not translate any
@@ -371,6 +415,7 @@ Output only the translation of the portion you are asked to translate, and nothi
         prompt = translation_prompt.format(
             source_lang=source_lang,
             target_lang=target_lang,
+            text_type=text_type,
             tagged_text=tagged_text,
             chunk_to_translate=source_text_chunks[i],
         )
@@ -387,6 +432,8 @@ def multichunk_reflect_on_translation(
     source_text_chunks: List[str],
     translation_1_chunks: List[str],
     model: str,
+    text_type: str,
+    identity_description: str = "You are an overseas study expert",
     country: str = "",
 ) -> List[str]:
     """
@@ -398,17 +445,17 @@ def multichunk_reflect_on_translation(
         source_text_chunks (List[str]): The source text divided into chunks.
         translation_1_chunks (List[str]): The translated chunks corresponding to the source text chunks.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
         country (str): Country specified for target language.
-
     Returns:
         List[str]: A list of reflections containing suggestions for improving each translated chunk.
     """
 
-    system_message = f"You are an expert linguist specializing in translation from {source_lang} to {target_lang}. \
+    system_message = f"{identity_description} specializing in translation from {source_lang} to {target_lang}. \
 You will be provided with a source text and its translation and your goal is to improve the translation."
 
     if country != "":
-        reflection_prompt = """Your task is to carefully read a source text and part of a translation of that text from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions for improving the translation.
+        reflection_prompt = """Your task is to carefully read a source text and part of a translation of that text from {source_lang} to {target_lang} for {text_type}, and then give constructive criticism and helpful suggestions for improving the translation.
 The final style and tone of the translation should match the style of {target_lang} colloquially spoken in {country}.
 
 The source text is below, delimited by XML tags <SOURCE_TEXT> and </SOURCE_TEXT>, and the part that has been translated
@@ -440,7 +487,7 @@ Each suggestion should address one specific part of the translation.
 Output only the suggestions and nothing else."""
 
     else:
-        reflection_prompt = """Your task is to carefully read a source text and part of a translation of that text from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions for improving the translation.
+        reflection_prompt = """Your task is to carefully read a source text and part of a translation of that text from {source_lang} to {target_lang} for {text_type}, and then give constructive criticism and helpful suggestions for improving the translation.
 
 The source text is below, delimited by XML tags <SOURCE_TEXT> and </SOURCE_TEXT>, and the part that has been translated
 is delimited by <TRANSLATE_THIS> and </TRANSLATE_THIS> within the source text. You can use the rest of the source text
@@ -485,6 +532,7 @@ Output only the suggestions and nothing else."""
             prompt = reflection_prompt.format(
                 source_lang=source_lang,
                 target_lang=target_lang,
+                text_type=text_type,
                 tagged_text=tagged_text,
                 chunk_to_translate=source_text_chunks[i],
                 translation_1_chunk=translation_1_chunks[i],
@@ -494,6 +542,7 @@ Output only the suggestions and nothing else."""
             prompt = reflection_prompt.format(
                 source_lang=source_lang,
                 target_lang=target_lang,
+                text_type=text_type,
                 tagged_text=tagged_text,
                 chunk_to_translate=source_text_chunks[i],
                 translation_1_chunk=translation_1_chunks[i],
@@ -512,6 +561,8 @@ def multichunk_improve_translation(
     translation_1_chunks: List[str],
     reflection_chunks: List[str],
     model: str, 
+    text_type: str,
+    identity_description: str = "You are an overseas study expert",
 ) -> List[str]:
     """
     Improves the translation of a text from source language to target language by considering expert suggestions.
@@ -523,13 +574,14 @@ def multichunk_improve_translation(
         translation_1_chunks (List[str]): The initial translation of each chunk.
         reflection_chunks (List[str]): Expert suggestions for improving each translated chunk.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
     Returns:
         List[str]: The improved translation of each chunk.
     """
 
-    system_message = f"You are an expert linguist, specializing in translation editing from {source_lang} to {target_lang}."
+    system_message = f"{identity_description}, specializing in translation editing from {source_lang} to {target_lang}."
 
-    improvement_prompt = """Your task is to carefully read, then improve, a translation from {source_lang} to {target_lang}, taking into
+    improvement_prompt = """Your task is to carefully read, then improve, a translation from {source_lang} to {target_lang} for {text_type}, taking into
 account a set of expert suggestions and constructive critisms. Below, the source text, initial translation, and expert suggestions are provided.
 
 The source text is below, delimited by XML tags <SOURCE_TEXT> and </SOURCE_TEXT>, and the part that has been translated
@@ -581,6 +633,7 @@ Output only the new translation of the indicated part and nothing else."""
         prompt = improvement_prompt.format(
             source_lang=source_lang,
             target_lang=target_lang,
+            text_type=text_type,
             tagged_text=tagged_text,
             chunk_to_translate=source_text_chunks[i],
             translation_1_chunk=translation_1_chunks[i],
@@ -594,7 +647,13 @@ Output only the new translation of the indicated part and nothing else."""
 
 
 def multichunk_translation(
-    source_lang, target_lang, source_text_chunks, model, country: str = ""
+    source_lang,
+    target_lang,
+    source_text_chunks,
+    model,
+    text_type,
+    identity_description: str = "You are an overseas study expert",
+    country: str = ""
 ):
     """
     Improves the translation of multiple text chunks based on the initial translation and reflection.
@@ -604,13 +663,19 @@ def multichunk_translation(
         target_lang (str): The target language for translation.
         source_text_chunks (List[str]): The list of source text chunks to be translated.
         model (str): The name of the OpenAI model to use for generating the completion.
+        text_type (str): The type of text to be translated.
         country (str): Country specified for target language
     Returns:
         List[str]: The list of improved translations for each source text chunk.
     """
 
     translation_1_chunks = multichunk_initial_translation(
-        source_lang, target_lang, source_text_chunks, model
+        source_lang,
+        target_lang,
+        source_text_chunks,
+        model,
+        text_type=text_type,
+        identity_description=identity_description,
     )
 
     reflection_chunks = multichunk_reflect_on_translation(
@@ -619,7 +684,9 @@ def multichunk_translation(
         source_text_chunks,
         translation_1_chunks,
         model,
-        country,
+        text_type=text_type,
+        identity_description=identity_description,
+        country=country,
     )
 
     translation_2_chunks = multichunk_improve_translation(
@@ -628,7 +695,9 @@ def multichunk_translation(
         source_text_chunks,
         translation_1_chunks,
         reflection_chunks,
-        model
+        model,
+        text_type=text_type,
+        identity_description=identity_description,
     )
 
     return translation_2_chunks
@@ -679,6 +748,8 @@ def translate(
     source_lang,
     target_lang,
     source_text,
+    text_type,
+    identity_description,
     country,
     model=DEFAULT_MODEL,
     chunk_model=DEFAULT_CHUNK_MODEL,
@@ -702,7 +773,13 @@ def translate(
         ic("Translating text as single chunk")
 
         final_translation = one_chunk_translate_text(
-            source_lang, target_lang, source_text, model, country
+            source_lang,
+            target_lang,
+            source_text,
+            model,
+            text_type=text_type,
+            identity_description=identity_description,
+            country=country
         )
 
         return final_translation
@@ -730,7 +807,13 @@ def translate(
         source_text_chunks = text_splitter.split_text(source_text)
 
         translation_2_chunks = multichunk_translation(
-            source_lang, target_lang, source_text_chunks, model, country
+            source_lang,
+            target_lang,
+            source_text_chunks,
+            model,
+            text_type=text_type,
+            identity_description=identity_description,
+            country=country
         )
 
         return "".join(translation_2_chunks)
@@ -763,7 +846,13 @@ def translate(
             if num_tokens_in_chunk < max_tokens:
                 ic("Translating chunk as single chunk")
                 temp_translation = one_chunk_translate_text(
-                    source_lang, target_lang, chunk, model, country
+                    source_lang,
+                    target_lang,
+                    chunk,
+                    model,
+                    text_type=text_type,
+                    identity_description=identity_description,
+                    country=country
                 )
             else:
                 ic("Translating chunk as multiple chunks")
@@ -788,7 +877,13 @@ def translate(
                 split_chunks = chunk_splitter.split_text(chunk)
 
                 translation_2_chunks = multichunk_translation(
-                    source_lang, target_lang, split_chunks, model, country
+                    source_lang,
+                    target_lang,
+                    split_chunks,
+                    model,
+                    text_type=text_type,
+                    identity_description=identity_description,
+                    country=country
                 )
 
                 temp_translation = "".join(translation_2_chunks)
@@ -798,6 +893,9 @@ def translate(
 
 if __name__ == "__main__":
     # with open("text.txt") as f:
-    #     text = f.read()
-    text = "{你好}，我是一个{翻译}机器人。"
-    translated_text = translate("Chinese", "English", text, "China")
+    #     text = f.read()  # noqa: ERA001
+    identity_description: str = "Overseas study consulting expert"
+    text_list = ["English - Master", "Forestry - Master", "History - Master", "Indigenous Learning"]
+    for text in text_list:
+        translated_text = translate("English", "Chinese", text, "a major", identity_description,"China")
+        print(text, "-->", translated_text)
