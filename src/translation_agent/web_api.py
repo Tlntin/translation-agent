@@ -27,7 +27,7 @@ class Data(BaseModel):
     target_lang: str
     source_text: str
     text_type: str
-    identity_description: str = "You are an overseas study expert"
+    identity_description: str = "You are an overseas study expert`, if text contains `Internation Year` you need tanslate Internation Year One or Internation Year 1 to `国际大一`, Internation Year Two or Internation Year 2 to `国际大二`, other Internation Year xx do the same as so on"
     country: str = "China"
     model: str = os.getenv("DEFAULT_MODEL")
     chunk_model: str = os.getenv("DEFAULT_CHUNK_MODEL")
