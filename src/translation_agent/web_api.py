@@ -4,6 +4,7 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.responses import HTMLResponse
 
 from .utils import MAX_TOKENS_PER_CHUNK
 from .utils import translate
@@ -32,6 +33,14 @@ class Data(BaseModel):
     model: str = os.getenv("DEFAULT_MODEL")
     chunk_model: str = os.getenv("DEFAULT_CHUNK_MODEL")
     max_tokens: int = MAX_TOKENS_PER_CHUNK
+
+@app.get("/")
+def read_root():
+    now_dir = os.path.dirname(__file__)
+    with open(os.path.join(now_dir, 'index.html'), encoding='utf-8') as f:
+        str1 = f.read()
+    return HTMLResponse(content=str1, status_code=200)
+
 
 
 @app.post("/translate/")
