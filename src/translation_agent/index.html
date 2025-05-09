@@ -122,11 +122,15 @@
                 <select id="source_lang">
                     <option value="Chinese" selected>中文</option>
                     <option value="English">英文</option>
+                    <option value="Japanese">日语</option>
+                    <option value="Korean">韩语</option>
                 </select>
                 <button class="swap-btn" onclick="swapLanguages()">⇅ 交换</button>
                 <select id="target_lang">
                     <option value="English" selected>英文</option>
                     <option value="Chinese">中文</option>
+                    <option value="Japanese">日语</option>
+                    <option value="Korean">韩语</option>
                 </select>
             </div>
         </div>
@@ -140,59 +144,134 @@
             </div>
         </div>
 
-        <div class="config-section">
-            <textarea id="identity_description" rows="4" placeholder="身份描述">
+        
+
+        <button id="toggle-hidden-fields" style="
+            margin-bottom: 10px;
+            padding: 10px 20px;
+            background: #8e44ad;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        ">
+            显示高级设置
+        </button>
+        <div id="advanced-settings" style="display: none; margin-top: 20px; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px;">
+            <div style="margin-bottom: 15px;">
+                <label for="identity_description" style="display: block; font-weight: bold; margin-bottom: 5px;">身份描述*：</label>
+                <textarea id="identity_description" rows="2" placeholder="身份描述" style="
+                    width: 100%;
+                    padding: 10px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    resize: none;
+                    overflow: hidden;
+                    min-height: 60px; /* 设置最低高度 */
+                " oninput="this.style.height = ''; this.style.height = Math.max(this.scrollHeight, 60) + 'px';">
 You are an overseas study expert, if text contains `International Year` you need translate `International Year Zero` or `International Year 0` or `International Year` to `预科`, `International Year One` or `International Year 1` to `国际大一`, `International Year Two` or `International Year 2` to `国际大二`, other `Internation Year xx` do the same as so on.</textarea>
+            </div>
+            <script>
+                // Automatically adjust the height of the textarea on page load
+                const identityDescription = document.getElementById('identity_description');
+                identityDescription.style.height = '';
+                identityDescription.style.height = Math.max(identityDescription.scrollHeight, 60) + 'px';
+            </script>
+            <div style="margin-bottom: 15px;">
+                <label for="country" style="display: block; font-weight: bold; margin-bottom: 5px;">国家*</label>
+                <input type="text" id="country" value="China" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="model" style="display: block; font-weight: bold; margin-bottom: 5px;">模型*</label>
+                <input type="text" id="model" value="qwen3-14b" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="chunk_model" style="display: block; font-weight: bold; margin-bottom: 5px;">分块模型*</label>
+                <input type="text" id="chunk_model" value="Qwen/Qwen3-14B-AWQ" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="max_tokens" style="display: block; font-weight: bold; margin-bottom: 5px;">最大令牌数*</label>
+                <input type="number" id="max_tokens" value="256" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="text_type" style="display: block; font-weight: bold; margin-bottom: 5px;">翻译类型</label>
+                <input type="text" id="text_type" value="" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+            </div>
         </div>
 
-        <div class="hidden-fields">
-            <input type="text" id="country" value="China">
-            <input type="text" id="model" value="qwen2.5-32b">
-            <input type="text" id="chunk_model" value="Qwen/Qwen2.5-32B-Instruct-GPTQ-Int4">
-            <input type="number" id="max_tokens" value="256">
-        </div>
-
+        <script>
+            document.getElementById('toggle-hidden-fields').addEventListener('click', () => {
+            const advancedSettings = document.getElementById('advanced-settings');
+            const toggleButton = document.getElementById('toggle-hidden-fields');
+            if (advancedSettings.style.display === 'none') {
+                advancedSettings.style.display = 'block';
+                toggleButton.textContent = '隐藏高级设置';
+            } else {
+                advancedSettings.style.display = 'none';
+                toggleButton.textContent = '显示高级设置';
+            }
+            });
+        </script>
+<!--
         <div class="action-bar">
             <button id="translate-btn">开始翻译</button>
         </div>
     </div>
+-->
+
 
     <script>
         function swapLanguages() {
             const source = document.getElementById('source_lang');
             const target = document.getElementById('target_lang');
+			const source_text = document.getElementById('source_text');
+			const result_text = document.getElementById('result');
             [source.value, target.value] = [target.value, source.value];
+			if (source_text.value.length > 0 && result_text.value.length > 0) {
+				[source_text.value, result_text.value] = [result_text.value, source_text.value];
+			}
         }
 
         // 改为箭头函数表达式
         const translate = async () => {
+            const source_text =  document.getElementById('source_text').value;
             const payload = {
                 source_lang: document.getElementById('source_lang').value,
                 target_lang: document.getElementById('target_lang').value,
-                source_text: document.getElementById('source_text').value,
+                source_text,
                 identity_description: document.getElementById('identity_description').value,
-                text_type: "",
+                text_type: document.getElementById('text_type').value,
                 country: document.getElementById('country').value,
                 model: document.getElementById('model').value,
                 chunk_model: document.getElementById('chunk_model').value,
                 max_tokens: parseInt(document.getElementById('max_tokens').value)
             };
-
-            try {
-                const response = await fetch('/translate/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await response.text();
-                document.getElementById('result').value = data.replace(/^"|"$/g, '') || "翻译失败";
-            } catch (error) {
-                document.getElementById('result').value = "翻译服务不可用";
+            if (source_text.length > 0) {
+                try {
+                    const response = await fetch('/translate/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.text();
+                    document.getElementById('result').value = data.replace(/^"|"$/g, '') || "翻译失败";
+                } catch (error) {
+                    window.alert("翻译服务不可用");
+                }
             }
         }
 
-        // 绑定事件监听器
-        document.getElementById('translate-btn').addEventListener('click', translate);
+        // 监听用户输入
+        let typingTimer;
+        const debounceTime = 1000; // 1000ms延迟
+
+        document.getElementById('source_text').addEventListener('input', () => {
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(translate, debounceTime);
+        });
     </script>
 </body>
 </html>
