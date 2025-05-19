@@ -382,7 +382,7 @@ def multichunk_initial_translation(
 
     system_message = f"{identity_description}, specializing in translation from {source_lang} to {target_lang}."
 
-    translation_prompt = """Your task is provide a professional translation from {source_lang} to {target_lang} of PART of a text for {type_text}.
+    translation_prompt = """Your task is provide a professional translation from {source_lang} to {target_lang} of PART of a text for {text_type}.
 
 The source text is below, delimited by XML tags <SOURCE_TEXT> and </SOURCE_TEXT>. Translate only the part within the source text
 delimited by <TRANSLATE_THIS> and </TRANSLATE_THIS>. You can use the rest of the source text as context, but do not translate any

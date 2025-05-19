@@ -6,12 +6,12 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
 
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 from .utils import MAX_TOKENS_PER_CHUNK
 from .utils import translate
 
 
 app = FastAPI()
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 
 def parse_args():
